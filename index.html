@@ -1,0 +1,1231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CYBERPULSE // 3D Rhythm Rush</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background-color: #05050d;
+            color: #ffffff;
+            overflow: hidden;
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .font-orbitron {
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        /* Neon Glow Effects */
+        .glow-cyan {
+            text-shadow: 0 0 10px rgba(0, 243, 255, 0.8), 0 0 20px rgba(0, 243, 255, 0.4);
+        }
+        .glow-magenta {
+            text-shadow: 0 0 10px rgba(255, 0, 127, 0.8), 0 0 20px rgba(255, 0, 127, 0.4);
+        }
+        .glow-yellow {
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.8), 0 0 20px rgba(255, 215, 0, 0.4);
+        }
+
+        .box-glow-cyan {
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.5), inset 0 0 15px rgba(0, 243, 255, 0.2);
+        }
+        .box-glow-magenta {
+            box-shadow: 0 0 15px rgba(255, 0, 127, 0.5), inset 0 0 15px rgba(255, 0, 127, 0.2);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(10, 10, 25, 0.8);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #00f3ff;
+            border-radius: 3px;
+        }
+
+        /* Canvas Overlay Animations */
+        @keyframes pulseGlow {
+            0%, 100% { opacity: 0.8; }
+            50% { opacity: 1; filter: drop-shadow(0 0 15px #00f3ff); }
+        }
+        
+        .animate-pulse-glow {
+            animation: pulseGlow 2s infinite;
+        }
+
+        /* Screen Shake Keyframe Class */
+        .shake {
+            animation: shake 0.15s cubic-bezier(.36,.07,.19,.97) both;
+        }
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-2px, -2px, 0); }
+            20%, 80% { transform: translate3d(3px, 3px, 0); }
+            30%, 50%, 70% { transform: translate3d(-5px, -3px, 0); }
+            40%, 60% { transform: translate3d(5px, 3px, 0); }
+        }
+    </style>
+</head>
+<body class="w-screen h-screen relative flex flex-col justify-between items-center overflow-hidden bg-black select-none">
+
+    <!-- GAME CANVAS CONTAINER -->
+    <div id="gameContainer" class="absolute inset-0 w-full h-full z-0">
+        <canvas id="rhythmCanvas" class="w-full h-full block"></canvas>
+    </div>
+
+    <!-- UI LAYER OVERLAY -->
+    <div id="uiLayer" class="absolute inset-0 w-full h-full z-10 pointer-events-none flex flex-col justify-between p-4 md:p-6">
+
+        <!-- HEADER / TOP HUD -->
+        <div id="topHUD" class="flex justify-between items-start w-full max-w-6xl mx-auto opacity-0 transition-opacity duration-300">
+            <!-- Health & Multiplier -->
+            <div class="flex flex-col gap-2 w-1/3 max-w-xs">
+                <div class="flex justify-between items-center text-xs md:text-sm font-bold text-cyan-400 font-orbitron">
+                    <span>ENERGY PULSE</span>
+                    <span id="hpText">100%</span>
+                </div>
+                <div class="w-full h-3 bg-gray-900 border border-cyan-500/50 rounded-full overflow-hidden p-0.5 box-glow-cyan">
+                    <div id="hpBar" class="h-full bg-gradient-to-r from-cyan-500 to-emerald-400 rounded-full transition-all duration-150 w-full"></div>
+                </div>
+                <!-- Track Progress -->
+                <div class="w-full h-1.5 bg-gray-900 rounded-full overflow-hidden mt-1">
+                    <div id="progressBar" class="h-full bg-magenta-500 w-0 transition-all duration-100"></div>
+                </div>
+            </div>
+
+            <!-- Score & Accuracy -->
+            <div class="text-center font-orbitron">
+                <div id="scoreText" class="text-3xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-white to-pink-500 tracking-wider glow-cyan">
+                    0000000
+                </div>
+                <div class="flex justify-center gap-4 text-xs md:text-sm font-semibold text-gray-300 mt-1">
+                    <span>ACC: <span id="accuracyText" class="text-cyan-400">100.0%</span></span>
+                    <span>RANK: <span id="rankText" class="text-yellow-400">SS</span></span>
+                </div>
+            </div>
+
+            <!-- Pause / Options Button -->
+            <div class="w-1/3 max-w-xs flex justify-end">
+                <button id="pauseBtn" class="pointer-events-auto px-4 py-2 bg-slate-900/80 border border-cyan-500/50 hover:bg-cyan-500/20 text-cyan-400 rounded-lg font-orbitron text-sm transition flex items-center gap-2 backdrop-blur-md">
+                    <i class="fa-solid fa-pause"></i> PAUSE
+                </button>
+            </div>
+        </div>
+
+        <!-- CENTER HUD: COMBO & JUDGMENT DISPLAY -->
+        <div class="absolute inset-0 flex flex-col justify-center items-center pointer-events-none transform -translate-y-12">
+            <div id="judgmentText" class="font-orbitron font-black text-4xl md:text-6xl tracking-widest opacity-0 transform scale-50 transition-all duration-100">
+                PERFECT
+            </div>
+            <div id="comboContainer" class="flex flex-col items-center mt-2 opacity-0 transition-opacity duration-200">
+                <div id="comboCount" class="font-orbitron font-black text-5xl md:text-7xl text-yellow-400 glow-yellow tracking-tighter">
+                    0
+                </div>
+                <div class="font-orbitron text-xs md:text-sm tracking-widest text-cyan-300 font-bold uppercase">
+                    COMBO STREAK
+                </div>
+            </div>
+        </div>
+
+        <!-- BOTTOM HUD: TOUCH CONTROLS (Visible on Mobile / Touch devices) -->
+        <div id="touchControls" class="w-full max-w-2xl mx-auto grid grid-cols-4 gap-2 md:gap-4 pointer-events-auto pb-2 md:pb-4 opacity-0 transition-opacity duration-300">
+            <button data-key="0" class="touch-btn h-20 md:h-24 bg-gradient-to-b from-cyan-950/60 to-cyan-600/40 border-2 border-cyan-400/60 rounded-xl flex flex-col items-center justify-center active:bg-cyan-400/60 active:scale-95 transition-all shadow-lg shadow-cyan-500/20">
+                <span class="font-orbitron text-xl md:text-2xl font-bold text-cyan-300 key-label">D</span>
+                <span class="text-[10px] text-cyan-200/70 font-semibold">LANE 1</span>
+            </button>
+            <button data-key="1" class="touch-btn h-20 md:h-24 bg-gradient-to-b from-magenta-950/60 to-pink-600/40 border-2 border-pink-400/60 rounded-xl flex flex-col items-center justify-center active:bg-pink-400/60 active:scale-95 transition-all shadow-lg shadow-pink-500/20">
+                <span class="font-orbitron text-xl md:text-2xl font-bold text-pink-300 key-label">F</span>
+                <span class="text-[10px] text-pink-200/70 font-semibold">LANE 2</span>
+            </button>
+            <button data-key="2" class="touch-btn h-20 md:h-24 bg-gradient-to-b from-magenta-950/60 to-pink-600/40 border-2 border-pink-400/60 rounded-xl flex flex-col items-center justify-center active:bg-pink-400/60 active:scale-95 transition-all shadow-lg shadow-pink-500/20">
+                <span class="font-orbitron text-xl md:text-2xl font-bold text-pink-300 key-label">J</span>
+                <span class="text-[10px] text-pink-200/70 font-semibold">LANE 3</span>
+            </button>
+            <button data-key="3" class="touch-btn h-20 md:h-24 bg-gradient-to-b from-cyan-950/60 to-cyan-600/40 border-2 border-cyan-400/60 rounded-xl flex flex-col items-center justify-center active:bg-cyan-400/60 active:scale-95 transition-all shadow-lg shadow-cyan-500/20">
+                <span class="font-orbitron text-xl md:text-2xl font-bold text-cyan-300 key-label">K</span>
+                <span class="text-[10px] text-cyan-200/70 font-semibold">LANE 4</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- MAIN MENU OVERLAY -->
+    <div id="mainMenu" class="absolute inset-0 z-20 flex flex-col justify-center items-center p-6 bg-slate-950/85 backdrop-blur-md transition-all duration-300">
+        <div class="max-w-xl w-full flex flex-col items-center text-center">
+            
+            <!-- Logo Header -->
+            <div class="mb-8">
+                <h1 class="font-orbitron text-5xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-pink-500 to-yellow-400 tracking-wider glow-cyan mb-1">
+                    CYBERPULSE
+                </h1>
+                <p class="font-orbitron text-xs md:text-sm text-cyan-400 tracking-widest uppercase font-semibold">
+                    // 3D Synthwave Rhythm Velocity
+                </p>
+            </div>
+
+            <!-- Song / Track Selection -->
+            <div class="w-full bg-slate-900/90 border border-cyan-500/40 rounded-2xl p-4 md:p-6 mb-6 shadow-2xl backdrop-blur-lg box-glow-cyan">
+                <h2 class="font-orbitron text-sm text-gray-400 mb-4 text-left font-semibold flex items-center gap-2">
+                    <i class="fa-solid fa-compact-disc text-cyan-400"></i> SELECT AUDIO TRACK
+                </h2>
+                
+                <div class="space-y-3" id="trackList">
+                    <!-- Tracks dynamically injected or static -->
+                    <div data-track="0" class="track-card cursor-pointer p-3.5 rounded-xl border border-cyan-500/30 bg-slate-800/50 hover:bg-cyan-950/40 transition flex justify-between items-center border-l-4 border-l-cyan-400">
+                        <div class="text-left">
+                            <div class="font-orbitron font-bold text-white text-base">NEON HIGHWAY</div>
+                            <div class="text-xs text-gray-400">Synthesizer Chillwave • 120 BPM</div>
+                        </div>
+                        <span class="px-2.5 py-1 bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 rounded-md font-orbitron text-xs font-bold">EASY</span>
+                    </div>
+
+                    <div data-track="1" class="track-card cursor-pointer p-3.5 rounded-xl border border-gray-800 bg-slate-800/30 hover:bg-pink-950/40 transition flex justify-between items-center">
+                        <div class="text-left">
+                            <div class="font-orbitron font-bold text-white text-base">CYBERNETIC STORM</div>
+                            <div class="text-xs text-gray-400">Darksynth Pulse • 138 BPM</div>
+                        </div>
+                        <span class="px-2.5 py-1 bg-yellow-500/20 text-yellow-400 border border-yellow-500/40 rounded-md font-orbitron text-xs font-bold">MEDIUM</span>
+                    </div>
+
+                    <div data-track="2" class="track-card cursor-pointer p-3.5 rounded-xl border border-gray-800 bg-slate-800/30 hover:bg-purple-950/40 transition flex justify-between items-center">
+                        <div class="text-left">
+                            <div class="font-orbitron font-bold text-white text-base">HYPERDRIVE OVERDRIVE</div>
+                            <div class="text-xs text-gray-400">Aggressive Electro • 155 BPM</div>
+                        </div>
+                        <span class="px-2.5 py-1 bg-pink-500/20 text-pink-400 border border-pink-500/40 rounded-md font-orbitron text-xs font-bold">HARD</span>
+                    </div>
+                </div>
+
+                <!-- Key Binding Selection -->
+                <div class="mt-5 pt-4 border-t border-gray-800 flex justify-between items-center">
+                    <span class="font-orbitron text-xs text-gray-400">KEY BINDINGS:</span>
+                    <div class="flex gap-2">
+                        <button id="keyBindDFJK" class="keybind-btn px-3 py-1 rounded bg-cyan-500/20 border border-cyan-400 text-cyan-300 font-orbitron text-xs font-bold">D F J K</button>
+                        <button id="keyBindASKL" class="keybind-btn px-3 py-1 rounded bg-slate-800 border border-gray-700 text-gray-400 font-orbitron text-xs font-bold">A S K L</button>
+                        <button id="keyBindArrows" class="keybind-btn px-3 py-1 rounded bg-slate-800 border border-gray-700 text-gray-400 font-orbitron text-xs font-bold">ARROWS</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Start Game Button -->
+            <button id="startBtn" class="w-full py-4 bg-gradient-to-r from-cyan-500 via-pink-500 to-yellow-500 rounded-xl font-orbitron text-black font-black text-xl tracking-wider hover:opacity-95 active:scale-98 transition transform shadow-lg shadow-cyan-500/30 flex items-center justify-center gap-3">
+                <i class="fa-solid fa-play"></i> INITIATE PULSE
+            </button>
+        </div>
+    </div>
+
+    <!-- PAUSE MENU OVERLAY -->
+    <div id="pauseMenu" class="hidden absolute inset-0 z-30 flex flex-col justify-center items-center bg-slate-950/90 backdrop-blur-lg">
+        <div class="max-w-md w-full p-6 bg-slate-900 border border-cyan-500/40 rounded-2xl text-center box-glow-cyan">
+            <h2 class="font-orbitron text-3xl font-black text-cyan-400 mb-6 glow-cyan">SYSTEM PAUSED</h2>
+            <div class="space-y-4">
+                <button id="resumeBtn" class="w-full py-3 bg-cyan-500 text-black font-orbitron font-bold rounded-xl hover:bg-cyan-400 transition">RESUME</button>
+                <button id="restartBtn" class="w-full py-3 bg-slate-800 border border-cyan-500/40 text-cyan-300 font-orbitron font-bold rounded-xl hover:bg-slate-700 transition">RESTART TRACK</button>
+                <button id="quitBtn" class="w-full py-3 bg-slate-800 border border-pink-500/40 text-pink-400 font-orbitron font-bold rounded-xl hover:bg-slate-700 transition">QUIT TO MENU</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- RESULTS SCREEN OVERLAY -->
+    <div id="resultsMenu" class="hidden absolute inset-0 z-30 flex flex-col justify-center items-center p-6 bg-slate-950/95 backdrop-blur-xl">
+        <div class="max-w-lg w-full bg-slate-900 border border-cyan-500/50 rounded-2xl p-6 md:p-8 text-center box-glow-cyan relative overflow-hidden">
+            <div id="resultHeader" class="font-orbitron text-3xl md:text-4xl font-black text-cyan-400 mb-2 glow-cyan">
+                TRACK COMPLETED
+            </div>
+            <div id="resultRank" class="font-orbitron text-7xl font-black text-yellow-400 glow-yellow my-4 transform scale-100 transition-transform">
+                SS
+            </div>
+
+            <!-- Stats Grid -->
+            <div class="grid grid-cols-2 gap-3 my-6 text-left">
+                <div class="bg-slate-800/60 p-3 rounded-lg border border-slate-700">
+                    <div class="text-xs text-gray-400 font-orbitron">FINAL SCORE</div>
+                    <div id="resScore" class="font-orbitron text-xl font-bold text-cyan-300">0000000</div>
+                </div>
+                <div class="bg-slate-800/60 p-3 rounded-lg border border-slate-700">
+                    <div class="text-xs text-gray-400 font-orbitron">ACCURACY</div>
+                    <div id="resAccuracy" class="font-orbitron text-xl font-bold text-pink-400">100.0%</div>
+                </div>
+                <div class="bg-slate-800/60 p-3 rounded-lg border border-slate-700">
+                    <div class="text-xs text-gray-400 font-orbitron">MAX COMBO</div>
+                    <div id="resMaxCombo" class="font-orbitron text-xl font-bold text-yellow-300">0</div>
+                </div>
+                <div class="bg-slate-800/60 p-3 rounded-lg border border-slate-700">
+                    <div class="text-xs text-gray-400 font-orbitron">PERFECT / MISS</div>
+                    <div id="resHitBreakdown" class="font-orbitron text-sm font-bold text-gray-200 mt-1">0 / 0</div>
+                </div>
+            </div>
+
+            <!-- Buttons -->
+            <div class="flex gap-4">
+                <button id="resRetryBtn" class="flex-1 py-3 bg-cyan-500 text-black font-orbitron font-bold rounded-xl hover:bg-cyan-400 transition">RETRY</button>
+                <button id="resMenuBtn" class="flex-1 py-3 bg-slate-800 border border-gray-700 text-gray-300 font-orbitron font-bold rounded-xl hover:bg-slate-700 transition">MENU</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT GAME ENGINE & AUDIO SYNTH -->
+    <script>
+        /**
+         * CYBERPULSE RHYTHM ENGINE
+         * Single File 3D Perspective Canvas & Web Audio API Synthesizer
+         */
+
+        // --- GLOBAL CONSTANTS & CONFIGS ---
+        const LANES_COUNT = 4;
+        let KEY_MAPS = {
+            'DFJK': ['KeyD', 'KeyF', 'KeyJ', 'KeyK'],
+            'ASKL': ['KeyA', 'KeyS', 'KeyK', 'KeyL'],
+            'ARROWS': ['ArrowLeft', 'ArrowDown', 'ArrowUp', 'ArrowRight']
+        };
+        let currentKeyBind = 'DFJK';
+        let keyLabels = ['D', 'F', 'J', 'K'];
+
+        // Color Themes for Lanes (Cyan and Pink Neon)
+        const LANE_COLORS = [
+            { main: '#00f3ff', light: 'rgba(0, 243, 255, 0.6)', glow: '#00d8e6' },
+            { main: '#ff007f', light: 'rgba(255, 0, 127, 0.6)', glow: '#e60073' },
+            { main: '#ff007f', light: 'rgba(255, 0, 127, 0.6)', glow: '#e60073' },
+            { main: '#00f3ff', light: 'rgba(0, 243, 255, 0.6)', glow: '#00d8e6' }
+        ];
+
+        // Judgment Hit Windows (in seconds)
+        const JUDGMENTS = {
+            PERFECT: { window: 0.045, score: 300, color: '#00f3ff', text: 'PERFECT!!' },
+            GREAT:   { window: 0.090, score: 200, color: '#32ff7e', text: 'GREAT!' },
+            GOOD:    { window: 0.135, score: 100, color: '#fff200', text: 'GOOD' },
+            MISS:    { window: 0.180, score: 0,   color: '#ff3838', text: 'MISS' }
+        };
+
+        // --- SONG TRACK DATA GENERATOR ---
+        const TRACK_LIST = [
+            {
+                id: 0,
+                title: "NEON HIGHWAY",
+                artist: "Synthesizer Chillwave",
+                bpm: 120,
+                difficulty: "EASY",
+                speed: 1.0,
+                synthPreset: "chill",
+                lengthSec: 60
+            },
+            {
+                id: 1,
+                title: "CYBERNETIC STORM",
+                artist: "Darksynth Pulse",
+                bpm: 138,
+                difficulty: "MEDIUM",
+                speed: 1.2,
+                synthPreset: "darksynth",
+                lengthSec: 65
+            },
+            {
+                id: 2,
+                title: "HYPERDRIVE OVERDRIVE",
+                artist: "Aggressive Electro",
+                bpm: 155,
+                difficulty: "HARD",
+                speed: 1.4,
+                synthPreset: "hyper",
+                lengthSec: 70
+            }
+        ];
+
+        let selectedTrackIndex = 0;
+
+        // --- WEB AUDIO SYNTHESIZER ---
+        class SynthEngine {
+            constructor() {
+                this.ctx = null;
+                this.masterGain = null;
+                this.isMuted = false;
+                this.isPlaying = false;
+                this.nextBeatTime = 0;
+                this.currentBeat = 0;
+                this.bpm = 120;
+                this.preset = "chill";
+                this.timerId = null;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AudioContext();
+                    this.masterGain = this.ctx.createGain();
+                    this.masterGain.gain.value = 0.35; // Master Volume
+                    this.masterGain.connect(this.ctx.destination);
+                }
+                if (this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+            playHitSound(lane, judgment) {
+                if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+                
+                // Miss sound
+                if (judgment === 'MISS') {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(120, now);
+                    osc.frequency.exponentialRampToValueAtTime(40, now + 0.15);
+                    gain.gain.setValueAtTime(0.3, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+                    osc.connect(gain);
+                    gain.connect(this.masterGain);
+                    osc.start(now);
+                    osc.stop(now + 0.15);
+                    return;
+                }
+
+                // Hit Pitch mapped to lane
+                const freqs = [261.63, 329.63, 392.00, 523.25]; // C4, E4, G4, C5
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                osc.type = judgment === 'PERFECT' ? 'triangle' : 'sine';
+                osc.frequency.setValueAtTime(freqs[lane], now);
+
+                let dur = 0.12;
+                let vol = judgment === 'PERFECT' ? 0.4 : 0.25;
+
+                gain.gain.setValueAtTime(vol, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+
+                osc.connect(gain);
+                gain.connect(this.masterGain);
+                osc.start(now);
+                osc.stop(now + dur);
+            }
+
+            // Synth Beat Track Generator Loop
+            scheduleBeat(beatNumber, time) {
+                // Synthesize Drum Kick
+                if (beatNumber % 4 === 0 || (this.preset === "hyper" && beatNumber % 2 === 0)) {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.frequency.setValueAtTime(150, time);
+                    osc.frequency.exponentialRampToValueAtTime(30, time + 0.12);
+                    gain.gain.setValueAtTime(0.7, time);
+                    gain.gain.exponentialRampToValueAtTime(0.01, time + 0.12);
+                    osc.connect(gain);
+                    gain.connect(this.masterGain);
+                    osc.start(time);
+                    osc.stop(time + 0.12);
+                }
+
+                // Synth Snare / Clap
+                if (beatNumber % 4 === 2) {
+                    const noiseBuffer = this.ctx.createBuffer(1, this.ctx.sampleRate * 0.1, this.ctx.sampleRate);
+                    const output = noiseBuffer.getChannelData(0);
+                    for (let i = 0; i < noiseBuffer.length; i++) {
+                        output[i] = Math.random() * 2 - 1;
+                    }
+                    const whiteNoise = this.ctx.createBufferSource();
+                    whiteNoise.buffer = noiseBuffer;
+                    const filter = this.ctx.createBiquadFilter();
+                    filter.type = 'highpass';
+                    filter.frequency.value = 1000;
+
+                    const gain = this.ctx.createGain();
+                    gain.gain.setValueAtTime(0.3, time);
+                    gain.gain.exponentialRampToValueAtTime(0.01, time + 0.1);
+
+                    whiteNoise.connect(filter);
+                    filter.connect(gain);
+                    gain.connect(this.masterGain);
+                    whiteNoise.start(time);
+                    whiteNoise.stop(time + 0.1);
+                }
+
+                // Synth Bass Line / Arp Notes
+                const bassFreqs = [65.41, 73.42, 82.41, 98.00]; // C2, D2, E2, G2
+                const bassOsc = this.ctx.createOscillator();
+                const bassGain = this.ctx.createGain();
+                
+                bassOsc.type = this.preset === 'darksynth' ? 'sawtooth' : 'square';
+                let freq = bassFreqs[beatNumber % 4];
+                if (this.preset === 'hyper') freq *= 1.25;
+
+                bassOsc.frequency.setValueAtTime(freq, time);
+                bassGain.gain.setValueAtTime(0.2, time);
+                bassGain.gain.exponentialRampToValueAtTime(0.01, time + 0.2);
+
+                bassOsc.connect(bassGain);
+                bassGain.connect(this.masterGain);
+                bassOsc.start(time);
+                bassOsc.stop(time + 0.2);
+            }
+
+            startBeatScheduler(bpm, preset) {
+                this.init();
+                this.bpm = bpm;
+                this.preset = preset;
+                this.currentBeat = 0;
+                this.nextBeatTime = this.ctx.currentTime + 0.1;
+                this.isPlaying = true;
+
+                const secondsPerBeat = 60.0 / (this.bpm * 2); // 8th notes
+
+                const scheduler = () => {
+                    if (!this.isPlaying) return;
+                    while (this.nextBeatTime < this.ctx.currentTime + 0.2) {
+                        this.scheduleBeat(this.currentBeat, this.nextBeatTime);
+                        this.nextBeatTime += secondsPerBeat;
+                        this.currentBeat++;
+                    }
+                    this.timerId = setTimeout(scheduler, 25);
+                };
+                scheduler();
+            }
+
+            stop() {
+                this.isPlaying = false;
+                if (this.timerId) clearTimeout(this.timerId);
+            }
+        }
+
+        const audioSynth = new SynthEngine();
+
+        // --- RHYTHM GAME ENGINE ---
+        class GameEngine {
+            constructor() {
+                this.canvas = document.getElementById('rhythmCanvas');
+                this.ctx = this.canvas.getContext('2d');
+
+                // Responsive Canvas Sizing
+                this.resizeCanvas();
+                window.addEventListener('resize', () => this.resizeCanvas());
+
+                // State
+                this.state = 'MENU'; // MENU, PLAYING, PAUSED, RESULTS
+                this.score = 0;
+                this.combo = 0;
+                this.maxCombo = 0;
+                this.hp = 100;
+                this.totalNotes = 0;
+                this.hits = { PERFECT: 0, GREAT: 0, GOOD: 0, MISS: 0 };
+
+                // Track & Beatmap Execution
+                this.track = null;
+                this.notes = []; // Active falling notes
+                this.songStartTime = 0;
+                this.pauseOffset = 0;
+                this.lastFrameTime = 0;
+
+                // Input State
+                this.keyState = [false, false, false, false];
+                this.keyFlashTime = [0, 0, 0, 0];
+
+                // Visual Effects
+                this.particles = [];
+                this.laneGlow = [0, 0, 0, 0];
+                this.screenShakeTime = 0;
+
+                // Perspective Projection Constants
+                this.vanishingPoint = { x: 0, y: 0 };
+                this.bottomWidth = 0;
+                this.topWidth = 0;
+                this.hitZoneY = 0;
+
+                this.setupInputs();
+            }
+
+            resizeCanvas() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+                
+                // Recalculate 3D Tunnel Perspective Anchors
+                this.vanishingPoint = {
+                    x: this.canvas.width / 2,
+                    y: this.canvas.height * 0.25 // Top center origin point
+                };
+                this.bottomWidth = Math.min(this.canvas.width * 0.85, 750);
+                this.topWidth = this.bottomWidth * 0.08; // Narrow far tunnel perspective
+                this.hitZoneY = this.canvas.height * 0.80; // Target bar location
+            }
+
+            setupInputs() {
+                // Keydown
+                window.addEventListener('keydown', (e) => {
+                    if (this.state !== 'PLAYING') return;
+                    const keys = KEY_MAPS[currentKeyBind];
+                    const laneIndex = keys.indexOf(e.code);
+                    if (laneIndex !== -1 && !this.keyState[laneIndex]) {
+                        this.keyState[laneIndex] = true;
+                        this.handleHit(laneIndex);
+                        this.keyFlashTime[laneIndex] = 1.0;
+                    }
+                });
+
+                // Keyup
+                window.addEventListener('keyup', (e) => {
+                    const keys = KEY_MAPS[currentKeyBind];
+                    const laneIndex = keys.indexOf(e.code);
+                    if (laneIndex !== -1) {
+                        this.keyState[laneIndex] = false;
+                    }
+                });
+
+                // Touch Buttons
+                const touchBtns = document.querySelectorAll('.touch-btn');
+                touchBtns.forEach((btn) => {
+                    const lane = parseInt(btn.getAttribute('data-key'));
+                    const triggerPress = (e) => {
+                        e.preventDefault();
+                        if (this.state !== 'PLAYING') return;
+                        this.keyState[lane] = true;
+                        this.handleHit(lane);
+                        this.keyFlashTime[lane] = 1.0;
+                    };
+                    const triggerRelease = (e) => {
+                        e.preventDefault();
+                        this.keyState[lane] = false;
+                    };
+
+                    btn.addEventListener('touchstart', triggerPress, { passive: false });
+                    btn.addEventListener('touchend', triggerRelease, { passive: false });
+                    btn.addEventListener('mousedown', triggerPress);
+                    btn.addEventListener('mouseup', triggerRelease);
+                });
+            }
+
+            generateChart(track) {
+                // Auto-generate procedural rhythm chart synced to BPM
+                const notes = [];
+                const bpm = track.bpm;
+                const beatDuration = 60 / bpm; // Time for 1 beat
+                const duration = track.lengthSec;
+                
+                let currentTime = 2.0; // 2 seconds delay before notes arrive
+                
+                // Patterns: 0=single, 1=alternating, 2=double stream, 3=syncopated
+                while (currentTime < duration) {
+                    const randPattern = Math.random();
+                    
+                    if (randPattern < 0.5) {
+                        // Single Note
+                        const lane = Math.floor(Math.random() * 4);
+                        notes.push({ lane, time: currentTime, hit: false, missed: false });
+                        currentTime += beatDuration * (Math.random() > 0.5 ? 0.5 : 1.0);
+                    } else if (randPattern < 0.8) {
+                        // Staircase pattern
+                        const startLane = Math.floor(Math.random() * 3);
+                        for (let i = 0; i < 3; i++) {
+                            notes.push({ lane: (startLane + i) % 4, time: currentTime + i * (beatDuration * 0.5), hit: false, missed: false });
+                        }
+                        currentTime += beatDuration * 2.0;
+                    } else {
+                        // Double Jump
+                        const lane1 = Math.floor(Math.random() * 2);
+                        const lane2 = lane1 + 2;
+                        notes.push({ lane: lane1, time: currentTime, hit: false, missed: false });
+                        notes.push({ lane: lane2, time: currentTime, hit: false, missed: false });
+                        currentTime += beatDuration * 1.0;
+                    }
+                }
+
+                // Sort by time
+                notes.sort((a, b) => a.time - b.time);
+                return notes;
+            }
+
+            start(trackIndex) {
+                audioSynth.init();
+                this.track = TRACK_LIST[trackIndex];
+                this.notes = this.generateChart(this.track);
+                this.totalNotes = this.notes.length;
+
+                this.score = 0;
+                this.combo = 0;
+                this.maxCombo = 0;
+                this.hp = 100;
+                this.hits = { PERFECT: 0, GREAT: 0, GOOD: 0, MISS: 0 };
+                this.particles = [];
+
+                this.songStartTime = audioSynth.ctx.currentTime;
+                audioSynth.startBeatScheduler(this.track.bpm, this.track.synthPreset);
+
+                this.state = 'PLAYING';
+                this.updateHUD();
+
+                // UI Visibility Toggle
+                document.getElementById('mainMenu').classList.add('hidden');
+                document.getElementById('pauseMenu').classList.add('hidden');
+                document.getElementById('resultsMenu').classList.add('hidden');
+                
+                document.getElementById('topHUD').classList.remove('opacity-0');
+                document.getElementById('touchControls').classList.remove('opacity-0');
+            }
+
+            pause() {
+                if (this.state !== 'PLAYING') return;
+                this.state = 'PAUSED';
+                this.pauseOffset = audioSynth.ctx.currentTime - this.songStartTime;
+                audioSynth.stop();
+                document.getElementById('pauseMenu').classList.remove('hidden');
+            }
+
+            resume() {
+                if (this.state !== 'PAUSED') return;
+                this.songStartTime = audioSynth.ctx.currentTime - this.pauseOffset;
+                audioSynth.startBeatScheduler(this.track.bpm, this.track.synthPreset);
+                this.state = 'PLAYING';
+                document.getElementById('pauseMenu').classList.add('hidden');
+            }
+
+            handleHit(lane) {
+                if (this.state !== 'PLAYING') return;
+
+                const songTime = audioSynth.ctx.currentTime - this.songStartTime;
+                const approachTime = 1.2 / this.track.speed; // Speed multiplier
+
+                // Find candidate note closest to hit zone in specified lane
+                let targetNote = null;
+                let minDiff = Infinity;
+
+                for (let note of this.notes) {
+                    if (note.lane === lane && !note.hit && !note.missed) {
+                        const diff = Math.abs(note.time - songTime);
+                        if (diff < minDiff) {
+                            minDiff = diff;
+                            targetNote = note;
+                        }
+                    }
+                }
+
+                if (targetNote && minDiff <= JUDGMENTS.MISS.window) {
+                    let rating = 'MISS';
+                    if (minDiff <= JUDGMENTS.PERFECT.window) rating = 'PERFECT';
+                    else if (minDiff <= JUDGMENTS.GREAT.window) rating = 'GREAT';
+                    else if (minDiff <= JUDGMENTS.GOOD.window) rating = 'GOOD';
+
+                    targetNote.hit = true;
+                    this.applyJudgment(rating, lane);
+                } else {
+                    // Blank press penalty
+                    this.laneGlow[lane] = 0.5;
+                }
+            }
+
+            applyJudgment(rating, lane) {
+                const info = JUDGMENTS[rating];
+                audioSynth.playHitSound(lane, rating);
+
+                if (rating !== 'MISS') {
+                    this.combo++;
+                    if (this.combo > this.maxCombo) this.maxCombo = this.combo;
+                    this.score += info.score + Math.floor(this.combo * 1.5);
+                    this.hp = Math.min(100, this.hp + 2.5);
+                    this.hits[rating]++;
+
+                    // Visual Juiciness Particles & Lane Flash
+                    this.spawnParticles(lane, info.color);
+                    this.laneGlow[lane] = 1.0;
+
+                    // Screen Shake on Milestones
+                    if (this.combo % 20 === 0 || rating === 'PERFECT') {
+                        this.triggerScreenShake();
+                    }
+                } else {
+                    this.combo = 0;
+                    this.hp = Math.max(0, this.hp - 12);
+                    this.hits.MISS++;
+
+                    if (this.hp <= 0) {
+                        this.gameOver();
+                        return;
+                    }
+                }
+
+                this.showJudgmentUI(info.text, info.color);
+                this.updateHUD();
+            }
+
+            spawnParticles(lane, color) {
+                const laneX = this.getLaneXAtY(lane, this.hitZoneY);
+                for (let i = 0; i < 18; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = Math.random() * 8 + 2;
+                    this.particles.push({
+                        x: laneX,
+                        y: this.hitZoneY,
+                        vx: Math.cos(angle) * speed,
+                        vy: Math.sin(angle) * speed - 2,
+                        size: Math.random() * 5 + 2,
+                        color: color,
+                        alpha: 1.0,
+                        life: 1.0
+                    });
+                }
+            }
+
+            triggerScreenShake() {
+                const container = document.getElementById('uiLayer');
+                container.classList.remove('shake');
+                void container.offsetWidth; // Force Reflow
+                container.classList.add('shake');
+            }
+
+            showJudgmentUI(text, color) {
+                const judgmentEl = document.getElementById('judgmentText');
+                const comboEl = document.getElementById('comboContainer');
+
+                judgmentEl.innerText = text;
+                judgmentEl.style.color = color;
+                judgmentEl.style.textShadow = `0 0 15px ${color}`;
+
+                // Pop animation
+                judgmentEl.classList.remove('opacity-0', 'scale-50');
+                judgmentEl.classList.add('opacity-100', 'scale-110');
+
+                setTimeout(() => {
+                    judgmentEl.classList.remove('scale-110');
+                    judgmentEl.classList.add('scale-100');
+                }, 50);
+
+                if (this.combo > 1) {
+                    comboEl.classList.remove('opacity-0');
+                    document.getElementById('comboCount').innerText = this.combo;
+                } else {
+                    comboEl.classList.add('opacity-0');
+                }
+            }
+
+            updateHUD() {
+                // Update Score
+                document.getElementById('scoreText').innerText = String(this.score).padStart(7, '0');
+
+                // Update Health Bar
+                const hpBar = document.getElementById('hpBar');
+                const hpText = document.getElementById('hpText');
+                hpBar.style.width = `${this.hp}%`;
+                hpText.innerText = `${Math.ceil(this.hp)}%`;
+
+                // Accuracy calculation
+                const totalPlayed = this.hits.PERFECT + this.hits.GREAT + this.hits.GOOD + this.hits.MISS;
+                let acc = 100.0;
+                if (totalPlayed > 0) {
+                    const weightedHits = (this.hits.PERFECT * 1.0) + (this.hits.GREAT * 0.7) + (this.hits.GOOD * 0.4);
+                    acc = (weightedHits / totalPlayed) * 100;
+                }
+                document.getElementById('accuracyText').innerText = `${acc.toFixed(1)}%`;
+
+                // Rank Grade
+                let rank = 'SS';
+                if (acc < 95) rank = 'S';
+                if (acc < 90) rank = 'A';
+                if (acc < 80) rank = 'B';
+                if (acc < 70) rank = 'C';
+                if (acc < 60) rank = 'D';
+                document.getElementById('rankText').innerText = rank;
+
+                // Progress Bar
+                if (this.track && audioSynth.ctx) {
+                    const elapsed = audioSynth.ctx.currentTime - this.songStartTime;
+                    const pct = Math.min(100, (elapsed / this.track.lengthSec) * 100);
+                    document.getElementById('progressBar').style.width = `${pct}%`;
+
+                    // Check Song Completion
+                    if (elapsed >= this.track.lengthSec + 1.5 && this.state === 'PLAYING') {
+                        this.showResults();
+                    }
+                }
+            }
+
+            gameOver() {
+                this.showResults(true);
+            }
+
+            showResults(failed = false) {
+                this.state = 'RESULTS';
+                audioSynth.stop();
+
+                document.getElementById('resultHeader').innerText = failed ? "PULSE FAILED" : "TRACK COMPLETED";
+                document.getElementById('resultHeader').style.color = failed ? "#ff3838" : "#00f3ff";
+
+                const accText = document.getElementById('accuracyText').innerText;
+                const rankText = document.getElementById('rankText').innerText;
+
+                document.getElementById('resultRank').innerText = failed ? "F" : rankText;
+                document.getElementById('resScore').innerText = String(this.score).padStart(7, '0');
+                document.getElementById('resAccuracy').innerText = accText;
+                document.getElementById('resMaxCombo').innerText = this.maxCombo;
+                document.getElementById('resHitBreakdown').innerText = `${this.hits.PERFECT}P / ${this.hits.GREAT}G / ${this.hits.MISS}M`;
+
+                document.getElementById('resultsMenu').classList.remove('hidden');
+            }
+
+            // --- 3D PERSPECTIVE MATH HELPERS ---
+            getLaneXAtY(lane, y) {
+                // Linear interpolation based on projection depth
+                const progress = (y - this.vanishingPoint.y) / (this.canvas.height - this.vanishingPoint.y);
+                const currentWidth = this.topWidth + (this.bottomWidth - this.topWidth) * progress;
+                const startX = this.vanishingPoint.x - currentWidth / 2;
+                const laneWidth = currentWidth / LANES_COUNT;
+                return startX + laneWidth * lane + laneWidth / 2;
+            }
+
+            getLaneBoundsAtY(lane, y) {
+                const progress = (y - this.vanishingPoint.y) / (this.canvas.height - this.vanishingPoint.y);
+                const currentWidth = this.topWidth + (this.bottomWidth - this.topWidth) * progress;
+                const startX = this.vanishingPoint.x - currentWidth / 2;
+                const laneWidth = currentWidth / LANES_COUNT;
+                return {
+                    left: startX + laneWidth * lane,
+                    right: startX + laneWidth * (lane + 1),
+                    width: laneWidth
+                };
+            }
+
+            // --- MAIN RENDER & UPDATE LOOP ---
+            updateAndRender(timestamp) {
+                // Clear Canvas with Dark Synth Background
+                this.ctx.fillStyle = '#05050f';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+                // Render Background Starfield Grid
+                this.drawCyberGrid();
+
+                if (this.state === 'PLAYING' || this.state === 'PAUSED') {
+                    const songTime = audioSynth.ctx ? (audioSynth.ctx.currentTime - this.songStartTime) : 0;
+                    const approachTime = 1.2 / (this.track ? this.track.speed : 1.0);
+
+                    // Check for Missed Notes
+                    for (let note of this.notes) {
+                        if (!note.hit && !note.missed && (songTime - note.time) > JUDGMENTS.MISS.window) {
+                            note.missed = true;
+                            this.applyJudgment('MISS', note.lane);
+                        }
+                    }
+
+                    // Render 3D Perspective Highway Lanes
+                    this.draw3DHighway();
+
+                    // Render Notes Moving down 3D Perspective
+                    this.drawNotes(songTime, approachTime);
+
+                    // Render Hit Particles
+                    this.drawParticles();
+
+                    if (this.state === 'PLAYING') {
+                        this.updateHUD();
+                    }
+                }
+
+                requestAnimationFrame((ts) => this.updateAndRender(ts));
+            }
+
+            drawCyberGrid() {
+                const ctx = this.ctx;
+                const w = this.canvas.width;
+                const h = this.canvas.height;
+                const vp = this.vanishingPoint;
+
+                ctx.save();
+                
+                // Draw Horizon Sun / Glow
+                const sunGlow = ctx.createRadialGradient(vp.x, vp.y, 5, vp.x, vp.y, 180);
+                sunGlow.addColorStop(0, 'rgba(255, 0, 127, 0.4)');
+                sunGlow.addColorStop(0.5, 'rgba(0, 243, 255, 0.15)');
+                sunGlow.addColorStop(1, 'transparent');
+                ctx.fillStyle = sunGlow;
+                ctx.fillRect(0, 0, w, h);
+
+                // Grid Lines radiate from Horizon
+                ctx.strokeStyle = 'rgba(0, 243, 255, 0.12)';
+                ctx.lineWidth = 1;
+
+                const gridLines = 16;
+                for (let i = -gridLines; i <= gridLines; i++) {
+                    const xTarget = vp.x + i * (w / gridLines) * 1.5;
+                    ctx.beginPath();
+                    ctx.moveTo(vp.x, vp.y);
+                    ctx.lineTo(xTarget, h);
+                    ctx.stroke();
+                }
+
+                ctx.restore();
+            }
+
+            draw3DHighway() {
+                const ctx = this.ctx;
+                const vp = this.vanishingPoint;
+                const h = this.canvas.height;
+
+                // 1. Draw Highway Base Tunnel Polygon
+                const topLeft = vp.x - this.topWidth / 2;
+                const topRight = vp.x + this.topWidth / 2;
+                const bottomLeft = vp.x - this.bottomWidth / 2;
+                const bottomRight = vp.x + this.bottomWidth / 2;
+
+                ctx.save();
+
+                // Track Background Surface Gradient
+                const highwayGrad = ctx.createLinearGradient(0, vp.y, 0, h);
+                highwayGrad.addColorStop(0, 'rgba(10, 10, 25, 0.95)');
+                highwayGrad.addColorStop(1, 'rgba(5, 5, 15, 0.98)');
+                
+                ctx.beginPath();
+                ctx.moveTo(topLeft, vp.y);
+                ctx.lineTo(topRight, vp.y);
+                ctx.lineTo(bottomRight, h);
+                ctx.lineTo(bottomLeft, h);
+                ctx.closePath();
+                ctx.fillStyle = highwayGrad;
+                ctx.fill();
+
+                // 2. Draw Lane Dividers & Glowing Key Hits
+                for (let i = 0; i <= LANES_COUNT; i++) {
+                    const topX = topLeft + (this.topWidth / LANES_COUNT) * i;
+                    const bottomX = bottomLeft + (this.bottomWidth / LANES_COUNT) * i;
+
+                    ctx.strokeStyle = i === 0 || i === LANES_COUNT ? 'rgba(0, 243, 255, 0.8)' : 'rgba(255, 255, 255, 0.15)';
+                    ctx.lineWidth = i === 0 || i === LANES_COUNT ? 3 : 1;
+                    ctx.beginPath();
+                    ctx.moveTo(topX, vp.y);
+                    ctx.lineTo(bottomX, h);
+                    ctx.stroke();
+                }
+
+                // 3. Lane Flash Highlights on Key Press
+                for (let i = 0; i < LANES_COUNT; i++) {
+                    if (this.keyState[i] || this.laneGlow[i] > 0) {
+                        const alpha = Math.max(this.keyState[i] ? 0.35 : 0, this.laneGlow[i] * 0.4);
+                        const b1 = this.getLaneBoundsAtY(i, vp.y);
+                        const b2 = this.getLaneBoundsAtY(i, h);
+
+                        const laneGrad = ctx.createLinearGradient(0, vp.y, 0, h);
+                        laneGrad.addColorStop(0, 'transparent');
+                        laneGrad.addColorStop(1, LANE_COLORS[i].light);
+
+                        ctx.fillStyle = laneGrad;
+                        ctx.beginPath();
+                        ctx.moveTo(b1.left, vp.y);
+                        ctx.lineTo(b1.right, vp.y);
+                        ctx.lineTo(b2.right, h);
+                        ctx.lineTo(b2.left, h);
+                        ctx.closePath();
+                        ctx.fill();
+
+                        this.laneGlow[i] = Math.max(0, this.laneGlow[i] - 0.05);
+                    }
+                }
+
+                // 4. Target Hit Line Bar
+                const hitY = this.hitZoneY;
+                const hitBLeft = vp.x - (this.topWidth + (this.bottomWidth - this.topWidth) * ((hitY - vp.y) / (h - vp.y))) / 2;
+                const hitBRight = vp.x + (this.topWidth + (this.bottomWidth - this.topWidth) * ((hitY - vp.y) / (h - vp.y))) / 2;
+
+                // Glowing Horizon Bar Target Line
+                ctx.strokeStyle = '#00f3ff';
+                ctx.lineWidth = 5;
+                ctx.shadowColor = '#00f3ff';
+                ctx.shadowBlur = 15;
+                ctx.beginPath();
+                ctx.moveTo(hitBLeft - 10, hitY);
+                ctx.lineTo(hitBRight + 10, hitY);
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+
+                // Lane Labels at Target Zone
+                for (let i = 0; i < LANES_COUNT; i++) {
+                    const bounds = this.getLaneBoundsAtY(i, hitY + 25);
+                    const centerX = (bounds.left + bounds.right) / 2;
+                    
+                    ctx.font = 'bold 16px Orbitron';
+                    ctx.fillStyle = this.keyState[i] ? '#ffffff' : LANE_COLORS[i].main;
+                    ctx.textAlign = 'center';
+                    ctx.fillText(keyLabels[i], centerX, hitY + 30);
+                }
+
+                ctx.restore();
+            }
+
+            drawNotes(songTime, approachTime) {
+                const ctx = this.ctx;
+                const vp = this.vanishingPoint;
+                const h = this.canvas.height;
+
+                // Iterate over notes and project onto 3D tunnel
+                for (let note of this.notes) {
+                    if (note.hit || note.missed) continue;
+
+                    const timeDiff = note.time - songTime;
+
+                    // Only draw notes currently approaching within the visible time window
+                    if (timeDiff <= approachTime && timeDiff >= -0.2) {
+                        // Exponential progression for perspective acceleration feeling
+                        const progress = 1.0 - (timeDiff / approachTime); // 0.0 at horizon, 1.0 at target hit line
+                        
+                        if (progress < 0 || progress > 1.25) continue;
+
+                        // Project Y coordinate from horizon VP to bottom
+                        const currentY = vp.y + Math.pow(progress, 1.8) * (this.hitZoneY - vp.y);
+                        
+                        // Calculate lane dimensions scaled by perspective projection
+                        const bounds = this.getLaneBoundsAtY(note.lane, currentY);
+                        const noteWidth = bounds.width * 0.85;
+                        const noteHeight = Math.max(6, 18 * progress); // Thickness expands closer to screen
+
+                        const centerX = (bounds.left + bounds.right) / 2;
+
+                        ctx.save();
+
+                        // Note Colors & Glow
+                        const color = LANE_COLORS[note.lane];
+                        ctx.shadowColor = color.glow;
+                        ctx.shadowBlur = 12 * progress;
+
+                        // Draw Rounded Neon Note Block
+                        ctx.fillStyle = color.main;
+                        ctx.beginPath();
+                        ctx.roundRect(centerX - noteWidth / 2, currentY - noteHeight / 2, noteWidth, noteHeight, 4);
+                        ctx.fill();
+
+                        // Inner Core Highlight
+                        ctx.fillStyle = '#ffffff';
+                        ctx.beginPath();
+                        ctx.roundRect(centerX - noteWidth * 0.35, currentY - noteHeight * 0.25, noteWidth * 0.7, noteHeight * 0.5, 2);
+                        ctx.fill();
+
+                        ctx.restore();
+                    }
+                }
+            }
+
+            drawParticles() {
+                const ctx = this.ctx;
+                for (let i = this.particles.length - 1; i >= 0; i--) {
+                    const p = this.particles[i];
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.alpha -= 0.03;
+
+                    if (p.alpha <= 0) {
+                        this.particles.splice(i, 1);
+                        continue;
+                    }
+
+                    ctx.save();
+                    ctx.globalAlpha = p.alpha;
+                    ctx.fillStyle = p.color;
+                    ctx.shadowColor = p.color;
+                    ctx.shadowBlur = 8;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+            }
+        }
+
+        // --- INITIALIZATION & UI BINDINGS ---
+        let game = null;
+
+        window.onload = () => {
+            game = new GameEngine();
+
+            // Start Animation Render Loop
+            game.updateAndRender(0);
+
+            // Bind UI Listeners
+            const startBtn = document.getElementById('startBtn');
+            const pauseBtn = document.getElementById('pauseBtn');
+            const resumeBtn = document.getElementById('resumeBtn');
+            const restartBtn = document.getElementById('restartBtn');
+            const quitBtn = document.getElementById('quitBtn');
+            const resRetryBtn = document.getElementById('resRetryBtn');
+            const resMenuBtn = document.getElementById('resMenuBtn');
+
+            startBtn.addEventListener('click', () => {
+                game.start(selectedTrackIndex);
+            });
+
+            pauseBtn.addEventListener('click', () => game.pause());
+            resumeBtn.addEventListener('click', () => game.resume());
+            restartBtn.addEventListener('click', () => game.start(selectedTrackIndex));
+            quitBtn.addEventListener('click', () => {
+                game.state = 'MENU';
+                document.getElementById('pauseMenu').classList.add('hidden');
+                document.getElementById('mainMenu').classList.remove('hidden');
+                document.getElementById('topHUD').classList.add('opacity-0');
+                document.getElementById('touchControls').classList.add('opacity-0');
+            });
+
+            resRetryBtn.addEventListener('click', () => game.start(selectedTrackIndex));
+            resMenuBtn.addEventListener('click', () => {
+                game.state = 'MENU';
+                document.getElementById('resultsMenu').classList.add('hidden');
+                document.getElementById('mainMenu').classList.remove('hidden');
+                document.getElementById('topHUD').classList.add('opacity-0');
+                document.getElementById('touchControls').classList.add('opacity-0');
+            });
+
+            // Track Selection Cards
+            const trackCards = document.querySelectorAll('.track-card');
+            trackCards.forEach(card => {
+                card.addEventListener('click', () => {
+                    trackCards.forEach(c => {
+                        c.classList.remove('border-cyan-500/30', 'bg-slate-800/50', 'border-l-4', 'border-l-cyan-400');
+                        c.classList.add('border-gray-800', 'bg-slate-800/30');
+                    });
+                    card.classList.remove('border-gray-800', 'bg-slate-800/30');
+                    card.classList.add('border-cyan-500/30', 'bg-slate-800/50', 'border-l-4', 'border-l-cyan-400');
+
+                    selectedTrackIndex = parseInt(card.getAttribute('data-track'));
+                });
+            });
+
+            // Keybinding Selectors
+            const updateKeyLabels = (bindKey) => {
+                currentKeyBind = bindKey;
+                const bindMap = {
+                    'DFJK': ['D', 'F', 'J', 'K'],
+                    'ASKL': ['A', 'S', 'K', 'L'],
+                    'ARROWS': ['←', '↓', '↑', '→']
+                };
+                keyLabels = bindMap[bindKey];
+
+                const touchLabels = document.querySelectorAll('.key-label');
+                touchLabels.forEach((el, idx) => {
+                    el.innerText = keyLabels[idx];
+                });
+
+                document.querySelectorAll('.keybind-btn').forEach(btn => {
+                    btn.classList.remove('bg-cyan-500/20', 'border-cyan-400', 'text-cyan-300');
+                    btn.classList.add('bg-slate-800', 'border-gray-700', 'text-gray-400');
+                });
+            };
+
+            document.getElementById('keyBindDFJK').addEventListener('click', (e) => {
+                updateKeyLabels('DFJK');
+                e.target.classList.add('bg-cyan-500/20', 'border-cyan-400', 'text-cyan-300');
+            });
+            document.getElementById('keyBindASKL').addEventListener('click', (e) => {
+                updateKeyLabels('ASKL');
+                e.target.classList.add('bg-cyan-500/20', 'border-cyan-400', 'text-cyan-300');
+            });
+            document.getElementById('keyBindArrows').addEventListener('click', (e) => {
+                updateKeyLabels('ARROWS');
+                e.target.classList.add('bg-cyan-500/20', 'border-cyan-400', 'text-cyan-300');
+            });
+        };
+    </script>
+</body>
+</html>
